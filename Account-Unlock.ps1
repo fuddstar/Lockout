@@ -8,17 +8,19 @@
 Import-Module ActiveDirectory
 
 # Fetch Last Unlocked Account Event from DC Security Log
-$Event=get-eventlog -log security | where {$_.eventID -eq 4767} | Sort-Object index -Descending | select -first 1
+$Event = Get-WinEvent -FilterHashtable @{LogName='Security';Id=4767} -ErrorAction Stop | Sort-Object -Property TimeCreated -Descending | Select -First 1
+
 
 # Fetch Variables from AD and Event Log 
-$User = $Event.ReplacementStrings[0]
-$Usern = Get-ADUser -Filter 'samAccountName -like $User' 
+[string]$User = $Event.Properties[0].Value
+$Usern = Get-ADUser -Identity $User
 $userName = $usern.Name
-$Domain = $Event.ReplacementStrings[1]
-$UnlockBy =  $Event.ReplacementStrings[4]
-$UnlockByUserN = Get-ADUser -Filter 'samAccountName -like $UnlockBy' 
+
+$Domain = $Event.Properties[5].Value
+[string]$UnlockBy =  $Event.Properties[4].Value
+$UnlockByUserN = Get-ADUser -Identity $UnlockBy
 $UnlockByUserName = $UnlockByUserN.Name
-$UnlockByDomain = $Event.ReplacementStrings[5]
+$UnlockByDomain = $Event.Properties[5].Value
 $Computer = $Event.MachineName
 
 # Build Email Notification
@@ -29,7 +31,7 @@ $MailSubject= "Account Unlocked: " + $Domain + "\" + $User
 $MailMessage.Subject = $MailSubject
 
 # Email Message Content
-$MailBody = "Account Name: " + $Domain + "\" + $User + "`r`n" + "Unlocked User: " + $Username  + "`r`n" + "Workstation: " + $Computer + "`r`n" + "Time: " + $Event.TimeGenerated + "`n`n" + "Unlocked By: " + $UnlockByDomain + "\" + $UnlockBy + "`r`n" + "Unlocked By User: " + $UnlockByUserName + "`n`n" + $Event.Message
+$MailBody = "Account Name: " + $Domain + "\" + $User + "`r`n" + "Unlocked User: " + $Username  + "`r`n" + "Workstation: " + $Computer + "`r`n" + "Time: " + $Event.TimeCreated + "`n`n" + "Unlocked By: " + $UnlockByDomain + "\" + $UnlockBy + "`r`n" + "Unlocked By User: " + $UnlockByUserName + "`n`n" + $Event.Message
 $MailMessage.Body = $MailBody
 
 # Email From:
@@ -52,3 +54,5 @@ $MailMessage.IsBodyHtml = 0
 $SmtpClient = New-Object system.net.mail.smtpClient
 $SmtpClient.host = "mailhost.ga.gov.au"
 $SmtpClient.Send($MailMessage)
+
+

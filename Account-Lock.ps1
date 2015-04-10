@@ -14,8 +14,8 @@ $Event = Get-WinEvent -FilterHashtable @{LogName='Security';Id=4740} -ErrorActio
 # Fetch Variables from AD and Event Log 
 [string]$User = $Event.Properties[0].Value
 $Usern = Get-ADUser -Identity $User
-
 $userName = $Usern.Name
+
 $Computer = $Event.Properties[1].Value
 $Domain = $Event.Properties[5].Value
 
