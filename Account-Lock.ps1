@@ -8,14 +8,16 @@
 Import-Module ActiveDirectory
 
 # Fetch Last Locked Account Event from DC Security Log
-$Event=get-eventlog -log security | where {$_.eventID -eq 4740} | Sort-Object index -Descending | select -first 1
+$Event = Get-WinEvent -FilterHashtable @{LogName='Security';Id=4740} -ErrorAction Stop | Sort-Object -Property TimeCreated -Descending | Select -First 1
+
 
 # Fetch Variables from AD and Event Log 
-$User = $Event.ReplacementStrings[0]
-$Usern = Get-ADUser -Filter 'samAccountName -like $User' 
+[string]$User = $Event.Properties[0].Value
+$Usern = Get-ADUser -Identity $User
+
 $userName = $Usern.Name
-$Computer = $Event.ReplacementStrings[1]
-$Domain = $Event.ReplacementStrings[5]
+$Computer = $Event.Properties[1].Value
+$Domain = $Event.Properties[5].Value
 
 # Build Email Notification
 $MailMessage = New-Object system.net.mail.mailmessage
@@ -25,7 +27,7 @@ $MailSubject= "Account Locked Out: " + $Domain + "\" + $User
 $MailMessage.Subject = $MailSubject
 
 # Email Message Content
-$MailBody = "Account Name: " + $Domain + "\" + $User + "`r`n" + "Locked User: " + $Username + "`r`n" + "Workstation: " + $Computer + "`r`n" + "Time: " + $Event.TimeGenerated + "`n`n" + $Event.Message
+$MailBody = "Account Name: " + $Domain + "\" + $User + "`r`n" + "Locked User: " + $Username + "`r`n" + "Workstation: " + $Computer + "`r`n" + "Time: " + $Event.TimeCreated + "`n`n" + $Event.Message
 $MailMessage.Body = $MailBody
 
 # Email From:
